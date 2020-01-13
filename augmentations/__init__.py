@@ -1,4 +1,4 @@
-import augmentations.cutout
-import augmentations.random_erasing
-import augmentations.mixup
-import augmentations.ricap
+from src.augmentations import cutout
+from src.augmentations import random_erasing
+from src.augmentations import mixup
+from src.augmentations import ricap

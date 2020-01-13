@@ -8,9 +8,10 @@ import torchvision
 import torchvision.models
 import torchvision.transforms
 
-import augmentations
-import transforms
+from src import augmentations
+from src import transforms
 
+import json
 
 class Dataset:
     def __init__(self, config):
@@ -23,8 +24,7 @@ class Dataset:
         self.test_transform = self._get_test_transform()
 
     def get_datasets(self):
-        train_dataset = getattr(torchvision.datasets, self.config['dataset'])(
-            self.dataset_dir,
+        train_dataset = getattr(torchvision.datasets, self.config['dataset'])( self.dataset_dir,
             train=True,
             transform=self.train_transform,
             download=True)
@@ -120,6 +120,32 @@ class MNIST(Dataset):
             self.std = np.array([0.3475])
         super(MNIST, self).__init__(config)
 
+class DownsampledDataset():
+    # Dataset with a subset of images from the original labeled dataset,
+    #   with an equal number of images per class
+    def __init__(self, full_dataset, num_pts_per_class, label_locations, random_seed=0):
+        # seed is for selecting the elements of each class to take
+        self.full_dataset = full_dataset
+        self.label_locations = label_locations
+
+        self.__set_selected_indices__(random_seed, num_pts_per_class)
+
+    def __set_selected_indices__(self, random_seed, num_pts_per_class):
+        np.random.seed(random_seed)
+        self.selected_indices = []
+        for key in self.label_locations.keys():
+            self.selected_indices.append(np.random.choice(self.label_locations[key],
+                                                          size=num_pts_per_class,
+                                                          replace=False))
+        self.selected_indices = np.array(self.selected_indices, dtype=int)
+        self.selected_indices = self.selected_indices.flatten('F') # column-major flattening
+
+    def __len__(self):
+        return len(self.selected_indices)
+
+    def __getitem__(self, idx):
+        return self.full_dataset.__getitem__(self.selected_indices[idx])
+
 
 def worker_init_fn(worker_id):
     np.random.seed(np.random.get_state()[1][0] + worker_id)
@@ -141,6 +167,22 @@ def get_loader(config):
         dataset = MNIST(config)
 
     train_dataset, test_dataset = dataset.get_datasets()
+
+    # handle subsampling
+    if 'examples_per_class' in config.keys():
+        examples_per_class = config['examples_per_class']
+        print(f'Subsampling training dataset to {examples_per_class} training examples per class')
+
+        with open('src/dataset_indices.json') as f:
+            label_locations = json.load(f)
+        label_locations = label_locations[dataset_name]['train']
+
+        train_dataset = DownsampledDataset(train_dataset, examples_per_class, label_locations, random_seed = config['subsampling_seed'])
+        print('Length of new dataset')
+        print(len(train_dataset))
+    else:
+        print('Not subsampling')
+    # end handle subsampling
 
     train_loader = torch.utils.data.DataLoader(
         train_dataset,

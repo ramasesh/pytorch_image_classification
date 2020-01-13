@@ -47,8 +47,7 @@ def _get_model_config(args):
         'compression_rate',
         # wrn, densenet
         'drop_rate',
-        # pyramidnet
-        'pyramid_alpha',
+        # pyramidnet 'pyramid_alpha',
         # resnext
         'cardinality',
         # shake_shake
@@ -132,6 +131,8 @@ def _get_data_config(args):
     keys = [
         'dataset',
         'n_classes',
+        'examples_per_class',
+        'subsampling_seed',
         'num_workers',
         'batch_size',
         'use_random_crop',
@@ -186,6 +187,7 @@ def _get_run_config(args):
         'tensorboard_train_images',
         'tensorboard_test_images',
         'tensorboard_model_params',
+        'test_config'
     ]
     config = _args2config(args, keys, None)
 
@@ -358,7 +360,7 @@ def get_config(args):
         raise RuntimeError(
             'One of args.arch and args.config must be specified')
     if args.config is None:
-        args.config = 'configs/{}.json'.format(args.arch)
+        args.config = 'src/configs/{}.json'.format(args.arch)
 
     args = _set_default_values(args)
     args = _cleanup_args(args)

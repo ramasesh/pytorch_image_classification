@@ -7,10 +7,17 @@ import numpy as np
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
+from functools import reduce
+import operator
 
-import augmentations
-import optim
+import src.augmentations
+import src.optim
 
+
+measurement_keys = {'train_loss': ['train', 'loss'], 
+                    'train_acc': ['train', 'accuracy'],
+                    'test_loss': ['test', 'loss'],
+                    'test_acc': ['test', 'accuracy']}
 
 def str2bool(s):
     if s.lower() == 'true':
@@ -22,8 +29,8 @@ def str2bool(s):
 
 
 def load_model(config):
-    module = importlib.import_module('models.{}'.format(config['arch']))
-    Network = getattr(module, 'Network')
+    module = importlib.import_module('src.models.{}'.format(config['arch']))
+    Network = getattr(module, 'Network') 
     return Network(config)
 
 
@@ -221,3 +228,30 @@ def get_criterion(data_config):
         train_criterion = nn.CrossEntropyLoss(reduction='mean')
     test_criterion = nn.CrossEntropyLoss(reduction='mean')
     return train_criterion, test_criterion
+
+
+def get_from_nested_dict(nested_dict, key_list):
+  """
+  takes a dictionary which is nested, i.e.
+  {'A': {'1': 'A1', '2': 'A2'}, 'B': {'1': 'B1', '2': 'B2'}}
+  and a list of keys, e.g.
+  ['B', '2'],
+  and traverses the nested dictionary structure to get (in the above example)
+  dict['B']['2']
+  """
+  return reduce(operator.getitem, key_list, nested_dict)
+
+def get_from_list(list_of_nested_dicts, key_list):
+  return [get_from_nested_dict(individual_dict, key_list) for individual_dict in list_of_nested_dicts]
+
+def get_multiple_from_list(list_of_nested_dicts, measurement_names, names_to_key_lists):
+  """ measurement_names should be a list of names you want to pull out, e.g.
+    ['train_loss', 'train_acc'] """
+
+  return {meas_name: get_from_list(list_of_nested_dicts, names_to_key_lists[meas_name]) for meas_name in measurement_names}
+
+def load_standard_measurements(logfile):
+    with open(logfile, 'r') as f:
+        loaded_data = json.load(f)
+
+    return get_multiple_from_list(loaded_data, list(measurement_keys.keys()), measurement_keys)

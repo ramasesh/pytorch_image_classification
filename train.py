@@ -8,6 +8,7 @@ import logging
 import argparse
 import numpy as np
 import random
+import sys
 
 import torch
 import torch.nn as nn
@@ -23,11 +24,11 @@ try:
 except Exception:
     is_apex_available = False
 
-from dataloader import get_loader
-import utils
-from utils import str2bool, AverageMeter
-import augmentations
-from argparser import get_config
+from src.dataloader import get_loader
+from src import utils
+from src.utils import str2bool, AverageMeter
+from src import augmentations
+from src.argparser import get_config
 
 torch.backends.cudnn.benchmark = True
 
@@ -44,6 +45,7 @@ def parse_args():
     parser = argparse.ArgumentParser()
     parser.add_argument('--arch', type=str)
     parser.add_argument('--config', type=str)
+    parser.add_argument('--test_config', type=str2bool, default=False)
 
     # model config (VGG)
     parser.add_argument('--n_channels', type=str)
@@ -128,6 +130,9 @@ def parse_args():
         default='CIFAR10',
         choices=['CIFAR10', 'CIFAR100', 'MNIST', 'FashionMNIST', 'KMNIST'])
     parser.add_argument('--num_workers', type=int, default=7)
+    # data subsampling
+    parser.add_argument('--examples_per_class', type=int, default=None)
+    parser.add_argument('--subsampling_seed', type=int, default=0)
     # standard data augmentation
     parser.add_argument('--use_random_crop', type=str2bool)
     parser.add_argument('--random_crop_padding', type=int, default=4)
@@ -482,19 +487,24 @@ def main():
     run_config = config['run_config']
     optim_config = config['optim_config']
 
+    if run_config['test_config']:
+        sys.exit(0)
+
+    # CODE FOR SAVING IN THE RIGHT PLACE
+    # TODO this is very bad practice, need to figure out a better way.
+    learning_rate_orders = [3., 1., 0.3, 0.1, 0.03, 0.01]
+    folderstr = str(learning_rate_orders.index(optim_config['base_lr']))
+
+    depth = config['model_config']['depth']
+    basechannels = config['model_config']['base_channels']
+    examples_per_class = config['data_config']['examples_per_class']
+    # END CODE FOR SAVING IN THE RIGHT PLACE
+
     # TensorBoard SummaryWriter
     if run_config['tensorboard']:
         writer = SummaryWriter(run_config['outdir'])
     else:
         writer = None
-
-    # set random seed
-    seed = run_config['seed']
-    torch.manual_seed(seed)
-    np.random.seed(seed)
-    random.seed(seed)
-    epoch_seeds = np.random.randint(
-        np.iinfo(np.int32).max // 2, size=optim_config['epochs'])
 
     # create output directory
     outdir = pathlib.Path(run_config['outdir'])
@@ -508,11 +518,21 @@ def main():
     # load data loaders
     train_loader, test_loader = get_loader(config['data_config'])
 
+    # set random seed (this was moved after the data loading because the data
+    # loader might have a random seed)
+    seed = run_config['seed']
+    torch.manual_seed(seed)
+    np.random.seed(seed)
+    random.seed(seed)
+    epoch_seeds = np.random.randint(
+        np.iinfo(np.int32).max // 2, size=optim_config['epochs'])
+
     # load model
     logger.info('Loading model...')
     model = utils.load_model(config['model_config'])
     n_params = sum([param.view(-1).size()[0] for param in model.parameters()])
     logger.info('n_params: {}'.format(n_params))
+
 
     if run_config['fp16'] and not run_config['use_amp']:
         model.half()
@@ -592,6 +612,29 @@ def main():
         # save model
         utils.save_checkpoint(state, outdir)
 
+
+    """
+    Upload to bucket code
+    """
+
+    from google.cloud import storage
+    import os
+
+    client = storage.Client()
+    bucket = client.get_bucket('ramasesh-bucket-1')
+    filenames = os.listdir(outdir)
+    outdirstr = str(outdir)
+    print('outdirstr = ')
+    print(outdirstr)
+    for filename in filenames:
+        print('Processing file' + filename)
+
+        blob = bucket.blob(f'CIFAR100_datasweep_{examples_per_class}/resnet_depth_{depth}_basechannels_{basechannels}/{folderstr}/' + filename)
+        blob.upload_from_filename(outdirstr + '/' + filename)
+
+    """
+    End upload to bucket code
+    """
 
 if __name__ == '__main__':
     main()
