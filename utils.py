@@ -255,3 +255,6 @@ def load_standard_measurements(logfile):
         loaded_data = json.load(f)
 
     return get_multiple_from_list(loaded_data, list(measurement_keys.keys()), measurement_keys)
+
+def load_standard_from_folder(foldername):
+    return load_standard_measurements(foldername + 'log.json')

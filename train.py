@@ -81,6 +81,8 @@ def parse_args():
     parser.add_argument('--seed', type=int, default=17)
     parser.add_argument('--test_first', type=str2bool, default=True)
     parser.add_argument('--device', type=str, default='cuda')
+    parser.add_argument('--count_params', type=str2bool, default=False) # just count number of parameters
+    parser.add_argument('--save_name', type=str)
 
     # TensorBoard configuration
     parser.add_argument(
@@ -487,18 +489,17 @@ def main():
     run_config = config['run_config']
     optim_config = config['optim_config']
 
+    # Code for saving in the correct place
+    all_arguments = {}
+    for key in config.keys():
+      all_arguments.update(config[key])
+
+    run_config['save_name'] = run_config['save_name'].format(**all_arguments)
+    print('Saving in ' + run_config['save_name'])
+    # End code for saving in the right place
+
     if run_config['test_config']:
         sys.exit(0)
-
-    # CODE FOR SAVING IN THE RIGHT PLACE
-    # TODO this is very bad practice, need to figure out a better way.
-    learning_rate_orders = [3., 1., 0.3, 0.1, 0.03, 0.01]
-    folderstr = str(learning_rate_orders.index(optim_config['base_lr']))
-
-    depth = config['model_config']['depth']
-    basechannels = config['model_config']['base_channels']
-    examples_per_class = config['data_config']['examples_per_class']
-    # END CODE FOR SAVING IN THE RIGHT PLACE
 
     # TensorBoard SummaryWriter
     if run_config['tensorboard']:
@@ -533,6 +534,9 @@ def main():
     n_params = sum([param.view(-1).size()[0] for param in model.parameters()])
     logger.info('n_params: {}'.format(n_params))
 
+    if run_config['count_params']:
+        # this option means just count the number of parameters, then move on
+        sys.exit(0)
 
     if run_config['fp16'] and not run_config['use_amp']:
         model.half()
@@ -623,14 +627,12 @@ def main():
     client = storage.Client()
     bucket = client.get_bucket('ramasesh-bucket-1')
     filenames = os.listdir(outdir)
-    outdirstr = str(outdir)
-    print('outdirstr = ')
-    print(outdirstr)
-    for filename in filenames:
-        print('Processing file' + filename)
 
-        blob = bucket.blob(f'CIFAR100_datasweep_{examples_per_class}/resnet_depth_{depth}_basechannels_{basechannels}/{folderstr}/' + filename)
-        blob.upload_from_filename(outdirstr + '/' + filename)
+    for filename in filenames:
+        print('Processing file: ' + filename)
+
+        blob = bucket.blob(run_config['save_name'] + filename)
+        blob.upload_from_filename(str(outdir) + '/' + filename)
 
     """
     End upload to bucket code

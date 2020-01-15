@@ -180,6 +180,8 @@ def _get_run_config(args):
         'outdir',
         'seed',
         'test_first',
+        'save_name',
+        'count_params',
         'device',
         'fp16',
         'use_amp',
@@ -190,7 +192,7 @@ def _get_run_config(args):
         'test_config'
     ]
     config = _args2config(args, keys, None)
-
+    
     return config
 
 
