@@ -14,6 +14,8 @@ from src import transforms
 import json
 
 class Dataset:
+    torchvision_datasets = ['CIFAR10', 'CIFAR100', 'MNIST', 'FashionMNIST', 'KMNIST']
+    imagefolder_datasets = ['CINIC10']
     def __init__(self, config):
         self.config = config
         dataset_rootdir = pathlib.Path('~/.torchvision/datasets').expanduser()
@@ -24,15 +26,21 @@ class Dataset:
         self.test_transform = self._get_test_transform()
 
     def get_datasets(self):
-        train_dataset = getattr(torchvision.datasets, self.config['dataset'])( self.dataset_dir,
-            train=True,
-            transform=self.train_transform,
-            download=True)
-        test_dataset = getattr(torchvision.datasets, self.config['dataset'])(
-            self.dataset_dir,
-            train=False,
-            transform=self.test_transform,
-            download=True)
+        if self.config['dataset'] in self.torchvision_datasets:
+            train_dataset = getattr(torchvision.datasets, self.config['dataset'])( self.dataset_dir,
+                train=True,
+                transform=self.train_transform,
+                download=True)
+            test_dataset = getattr(torchvision.datasets, self.config['dataset'])(
+                self.dataset_dir,
+                train=False,
+                transform=self.test_transform,
+                download=True)
+        else:
+            train_dataset = torchvision.datasets.ImageFolder(self.directory + '/train',
+                                                             transform = self.train_transform)
+            test_dataset = torchvision.datasets.ImageFolder(self.directory + '/test',
+                                                             transform = self.test_transform)
         return train_dataset, test_dataset
 
     def _add_random_crop(self):
@@ -120,6 +128,14 @@ class MNIST(Dataset):
             self.std = np.array([0.3475])
         super(MNIST, self).__init__(config)
 
+class CINIC(Dataset):
+    def __init__(self, config):
+        self.size = 32
+        self.mean = np.array([0.47889522, 0.47227842, 0.43047404])
+        self.std = np.array([0.24205776, 0.23828046, 0.25874835])
+        self.directory = './datasets/CINIC10'
+        super(CINIC, self).__init__(config)
+
 class DownsampledDataset():
     # Dataset with a subset of images from the original labeled dataset,
     #   with an equal number of images per class
@@ -158,13 +174,15 @@ def get_loader(config):
 
     dataset_name = config['dataset']
     assert dataset_name in [
-        'CIFAR10', 'CIFAR100', 'MNIST', 'FashionMNIST', 'KMNIST'
+        'CIFAR10', 'CIFAR100', 'MNIST', 'FashionMNIST', 'KMNIST', 'CINIC10'
     ]
 
     if dataset_name in ['CIFAR10', 'CIFAR100']:
         dataset = CIFAR(config)
     elif dataset_name in ['MNIST', 'FashionMNIST', 'KMNIST']:
         dataset = MNIST(config)
+    elif dataset_name in ['CINIC10']:
+        dataset = CINIC(config)
 
     train_dataset, test_dataset = dataset.get_datasets()
 
