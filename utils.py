@@ -14,7 +14,7 @@ import src.augmentations
 import src.optim
 
 
-measurement_keys = {'train_loss': ['train', 'loss'], 
+measurement_keys = {'train_loss': ['train', 'loss'],
                     'train_acc': ['train', 'accuracy'],
                     'test_loss': ['test', 'loss'],
                     'test_acc': ['test', 'accuracy']}
@@ -30,7 +30,7 @@ def str2bool(s):
 
 def load_model(config):
     module = importlib.import_module('src.models.{}'.format(config['arch']))
-    Network = getattr(module, 'Network') 
+    Network = getattr(module, 'Network')
     return Network(config)
 
 

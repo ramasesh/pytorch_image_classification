@@ -38,6 +38,9 @@ logging.basicConfig(
     level=logging.DEBUG)
 logger = logging.getLogger(__name__)
 
+pil_logger = logging.getLogger('PIL')
+pil_logger.setLevel(logging.INFO)
+
 global_step = 0
 
 
@@ -130,7 +133,7 @@ def parse_args():
         '--dataset',
         type=str,
         default='CIFAR10',
-        choices=['CIFAR10', 'CIFAR100', 'MNIST', 'FashionMNIST', 'KMNIST'])
+        choices=['CINIC10','CIFAR10', 'CIFAR100', 'MNIST', 'FashionMNIST', 'KMNIST'])
     parser.add_argument('--num_workers', type=int, default=7)
     # data subsampling
     parser.add_argument('--examples_per_class', type=int, default=None)

@@ -233,7 +233,7 @@ def _cleanup_args(args):
         args.use_bn = None
     if args.arch not in [
             'resnet', 'resnet_preact', 'densenet', 'pyramidnet',
-            'se_resnet_preact'
+            'se_resnet_preact', 'standard_resnet'
     ]:
         args.block_type = None
     if args.arch not in ['resnet_preact', 'se_resnet_preact']:
@@ -327,7 +327,7 @@ def _cleanup_args(args):
         args.tensorboard_model_params = False
 
     # data
-    if args.dataset == 'CIFAR10':
+    if args.dataset in ['CIFAR10', 'CINIC10']:
         args.input_shape = (1, 3, 32, 32)
         args.n_classes = 10
     elif args.dataset == 'CIFAR100':
