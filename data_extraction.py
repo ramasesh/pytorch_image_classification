@@ -1,6 +1,9 @@
 import re
 import json
 import itertools
+from src import utils
+
+BASE_BUCKET_NAME = 'gs://ramasesh-bucket-1/'
 
 def load_config(filename):
   """ loads a Caliban-style experiment configuration dictionary (or list of dictionaries)
@@ -25,12 +28,12 @@ def load_data(location_string, configurations, loading_function):
 
   all_data = {}
   for configuration in configurations:
-    data_location = populate_loc_string(location_string, configuration)
-    data_tuple = dict_vals_tuple(configuration)
-    print(data_location)
-    print(data_tuple)
-    all_data[data_tuple] = loading_function(data_location)
-
+    try:
+      data_location = populate_loc_string(location_string, configuration)
+      data_tuple = dict_vals_tuple(configuration)
+      all_data[data_tuple] = loading_function(data_location)
+    except:
+      print(f"Could not load data for configuration {configuration}")
   return all_data
 
 def enumerate_configurations(config_dict, debug_lvl=0):
@@ -58,15 +61,21 @@ def populate_loc_string(location_string, configuration):
   configuration = {'lr_decay': 0.01, 'depth': 10},
   and populates the string, returning
   "CIFAR10_0.01_10"
-  """ 
+  """
   return location_string.format(**configuration)
 
-def all_folders(config_dict):
-  """ converts a Caliban-style experiment config dictionary into a list of folders,
+def all_folders(config):
+  """ converts a Caliban-style experiment config dictionary or list of dictionaries into a list of folders,
   which can then be loaded, e.g. from a bucket """
 
-  all_configurations = enumerate_configurations(config_dict)
-  return [populate_loc_string(config_dict['save_name'], configuration) for configuration in all_configurations]
+  if type(config) is dict:
+    all_configurations = enumerate_configurations(config)
+    return [populate_loc_string(config['save_name'], configuration) for configuration in all_configurations]
+  elif type(config) is list:
+    all_foldernames = []
+    for config_dict in config:
+      all_foldernames.extend(all_folders(config_dict))
+    return(all_foldernames)
 
 def product_dict(**kwargs):
   """ given a kwargs dictionary, all of whose items are lists,
@@ -107,22 +116,59 @@ def dict_vals_tuple(dictionary):
 
 import os
 
-def grab_from_bucket(config, destination_directory):
+def grab_from_bucket(config, destination_directory, test_command=False, file_extension=None):
   """ allows either config to be a dictionary itself, or a list of config dictionaries """
-  #TODO make this exclude certain filenames if you don't want to copy them over
+  # please specify file_extension with a '.'
+
+  #TODO Current problem: if you add file extensions, it copies the files directly into the destination directory without 
+  #   the final foldername
+
   if type(config) is str:
     config = load_config(config)
+  all_foldernames = all_folders(config)
 
-  if type(config) is dict:
-    all_foldernames = all_folders(config)
-  elif type(config) is list:
-    all_foldernames = []
-    for config_dict in config:
-      all_foldernames.extend(all_folders(config_dict))
+  all_folders_list =[BASE_BUCKET_NAME + folder_name for folder_name in all_foldernames]
 
-  base_bucket_name = 'gs://ramasesh-bucket-1/'
-  all_folders_list =[base_bucket_name + folder_name for folder_name in all_foldernames] 
-  all_folders_string = ' '.join([base_bucket_name + folder_name for folder_name in all_foldernames])
+  if file_extension is not None:
+    #TODO
+    all_folders_list = [folder_name + file_extension for folder_name in all_folders_list]
 
-  os.system(f'gsutil -m cp -r {all_folders_string} {destination_directory}')
+  all_folders_string = ' '.join(all_folders_list)
 
+  command_to_run = f'mkdir -p {destination_directory} && gsutil -m cp -r {all_folders_string} {destination_directory}'
+
+  if test_command:
+    print(command_to_run)
+  else:
+    os.system(f'mkdir -p {destination_directory} && gsutil -m cp -r {all_folders_string} {destination_directory}')
+
+def grab_and_process(config_filename):
+  """ run this in project root """
+
+  config = load_config(config_filename)
+  if type(config) == list:
+    data = []
+    for indiv_config in config:
+      save_loc = base_foldername(indiv_config['save_name'])
+      grab_from_bucket(indiv_config, save_loc)
+      indiv_data = load_data_from_dict(indiv_config, utils.load_standard_from_folder)
+      indiv_data['config'] = indiv_config
+      data.append(indiv_data)
+  else:
+    save_loc = base_foldername(config['save_name'])
+    grab_from_bucket(config, save_loc)
+    data = load_data_from_dict(config, utils.load_standard_from_folder)
+
+  return data
+
+def base_foldername(foldername):
+  if foldername[-1] == '/':
+    foldername = foldername[:-1]
+
+  foldername = foldername[::-1]
+  last_slash = foldername.index('/')
+  foldername = foldername[::-1]
+
+  foldername = foldername[:len(foldername) - last_slash]
+
+  return foldername

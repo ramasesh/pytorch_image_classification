@@ -76,7 +76,7 @@ def optimum_array(all_data, depths, basechannels, msmt_type='train_acc'):
   optimum_list = [[optimum_dict[d][b] for d in depths] for b in basechannels]
 
   return np.array(optimum_list)
- 
+
 def imshow_with_vals(data, x_axis, y_axis, xlabel, ylabel, title):
   fig, ax = plt.subplots()
   im = ax.imshow(data)
