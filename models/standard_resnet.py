@@ -8,7 +8,6 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
-
 def initialize_weights(module):
     if isinstance(module, nn.Conv2d):
         nn.init.kaiming_normal_(module.weight.data, mode='fan_out')
@@ -134,9 +133,10 @@ class Network(nn.Module):
         assert block_type in ['basic', 'bottleneck']
         if block_type == 'basic':
             block = BasicBlock
-            n_blocks_per_stage = (depth - 2) // 6
-            assert n_blocks_per_stage * 6 + 2 == depth
+            n_blocks_per_stage = (depth - 2) // 8 # changed
+            assert n_blocks_per_stage * 8 + 2 == depth
         else:
+            raise Exception("Not implemented")
             block = BottleneckBlock
             n_blocks_per_stage = (depth - 2) // 9
             assert n_blocks_per_stage * 9 + 2 == depth
@@ -197,6 +197,7 @@ class Network(nn.Module):
         x = self.stage1(x)
         x = self.stage2(x)
         x = self.stage3(x)
+        x = self.stage4(x)
         x = F.adaptive_avg_pool2d(x, output_size=1)
         return x
 
