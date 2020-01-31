@@ -10,8 +10,8 @@ import torch.nn.functional as F
 from functools import reduce
 import operator
 
-import src.augmentations
-import src.optim
+from src import augmentations
+from src import optim
 
 
 measurement_keys = {'train_loss': ['train', 'loss'],

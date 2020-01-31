@@ -1,7 +1,8 @@
 import re
 import json
-import itertools
+import itertools as it
 from src import utils
+from caliban import util
 
 BASE_BUCKET_NAME = 'gs://ramasesh-bucket-1/'
 
@@ -30,29 +31,63 @@ def load_data(location_string, configurations, loading_function):
   for configuration in configurations:
     try:
       data_location = populate_loc_string(location_string, configuration)
-      data_tuple = dict_vals_tuple(configuration)
+      data_tuple = dict_vals_tuple(location_string, configuration)
       all_data[data_tuple] = loading_function(data_location)
     except:
       print(f"Could not load data for configuration {configuration}")
   return all_data
 
-def enumerate_configurations(config_dict, debug_lvl=0):
+def enumerate_configurations(m, debug_lvl=0):
   """ converts a Caliban-style experiment config dictionary into a list of dictionaries,
   one for each configuration. """
 
-  arguments_to_save = extract_in_braces(config_dict['save_name'])
-  save_args = {argument: config_dict[argument] for argument in arguments_to_save}
+  #TODO replace this with caliban.utils.dict_product as soon as that change becomes approved
 
-  if debug_lvl > 0:
-    print(f"save_args: {save_args}")
+  def is_disguised_list(s):
+    if not isinstance(s, str):
+      return False
+    else:
+      return s[0] == '[' and s[-1] == ']'
 
-  all_configurations = list(product_dict(**save_args))
+  def wrap_v(k, v):
+    if not is_disguised_list(k):
+      check_if_list = v
+    else:
+      check_if_list = v[0]
+    return v if isinstance(check_if_list, list) else [v]
 
-  if debug_lvl > 0:
-    for configuration in all_configurations:
-      print(configuration)
+  cleaned = {k: wrap_v(k, v) for k, v in m.items()}
 
-  return all_configurations
+  ks = cleaned.keys()
+  vs = cleaned.values()
+
+  cartesian_product = (dict(zip(ks, x)) for x in it.product(*vs))
+
+  fully_expanded = (expand_key_lists(d) for d in cartesian_product)
+
+  return fully_expanded
+
+def expand_key_lists(m):
+  # TODO kill this once the caliban change becomes approved
+
+  expanded_m = {}
+
+  def is_disguised_list(s):
+    if not isinstance(s, str):
+      return False
+    else:
+      return s[0] == '[' and s[-1] == ']'
+
+  def expand_disguised_list(s):
+    return s.strip('][').split(',')
+
+  for k, v in m.items():
+    if is_disguised_list(k):
+      for i, ki in enumerate(expand_disguised_list(k)):
+        expanded_m.update({ki: v[i]})
+    else:
+      expanded_m.update({k:v})
+  return expanded_m
 
 def populate_loc_string(location_string, configuration):
   """ takes a string with some fields to populate, e.g.
@@ -89,7 +124,7 @@ def product_dict(**kwargs):
     if type(vals[i]) is not list:
       vals[i] = [vals[i]]
 
-  for instance in itertools.product(*vals):
+  for instance in it.product(*vals):
     yield dict(zip(keys, instance))
 
 def extract_in_braces(string):
@@ -103,11 +138,13 @@ def extract_in_braces(string):
   found_in_braces = map(select_match, found_in_braces)
   found_in_braces = map(remove_outer, found_in_braces)
 
-  return found_in_braces
+  return list(found_in_braces)
 
+def dict_vals_tuple(location_string, dictionary):
 
-def dict_vals_tuple(dictionary):
-  sorted_dict_keys = sorted(dictionary.keys())
+  keys_to_keep = extract_in_braces(location_string)
+  sorted_dict_keys = sorted(keys_to_keep)
+
   return tuple([dictionary[k] for k in sorted_dict_keys])
 
 # TODO Move this somewhere else
@@ -142,22 +179,28 @@ def grab_from_bucket(config, destination_directory, test_command=False, file_ext
   else:
     os.system(f'mkdir -p {destination_directory} && gsutil -m cp -r {all_folders_string} {destination_directory}')
 
-def grab_and_process(config_filename):
+def grab_and_process(config_filename, test=False):
   """ run this in project root """
 
-  config = load_config(config_filename)
+  if type(config_filename) == str:
+    config = load_config(config_filename)
+  else:
+    config = config_filename
+
+
   if type(config) == list:
     data = []
     for indiv_config in config:
-      save_loc = base_foldername(indiv_config['save_name'])
-      grab_from_bucket(indiv_config, save_loc)
-      indiv_data = load_data_from_dict(indiv_config, utils.load_standard_from_folder)
+      indiv_data = grab_and_process(indiv_config,test=test)
       indiv_data['config'] = indiv_config
       data.append(indiv_data)
   else:
     save_loc = base_foldername(config['save_name'])
-    grab_from_bucket(config, save_loc)
-    data = load_data_from_dict(config, utils.load_standard_from_folder)
+    grab_from_bucket(config, save_loc, test_command=test)
+    if not test:
+      data = load_data_from_dict(config, utils.load_standard_from_folder)
+    else: 
+      data = []
 
   return data
 

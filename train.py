@@ -194,6 +194,7 @@ def train(epoch, model, optimizer, scheduler, criterion, train_loader, config,
     optim_config = config['optim_config']
     data_config = config['data_config']
     device = torch.device(run_config['device'])
+    # could add a save_config = config['save_config']
 
     logger.info('Train {}'.format(epoch))
 
