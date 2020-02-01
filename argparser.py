@@ -36,6 +36,8 @@ def _get_model_config(args):
         'base_channels',
         'block_type',
         'depth',
+        # small_relu
+        'n_hidden',
         # resnet_preact, se_resnet_preact
         'remove_first_relu',
         'add_last_bn',
@@ -155,7 +157,12 @@ def _get_data_config(args):
         'ricap_beta',
         'use_label_smoothing',
         'label_smoothing_epsilon',
-    ]
+        'sphere_dim',
+        'sphere_inner_rad',
+        'sphere_outer_rad',
+        'sphere_trainset_size',
+        'sphere_testset_size'
+        ]
     json_keys = ['random_erasing_area_ratio_range']
     config = _args2config(args, keys, json_keys)
     config['use_gpu'] = args.device != 'cpu'
@@ -173,7 +180,22 @@ def _check_data_config(config):
         raise ValueError(
             'Only one of `use_mixup`, `use_ricap` and `use_dual_cutout` can be `True`.'
         )
-
+    if config['dataset'] == 'spheres':
+        if config['sphere_outer_rad'] <= config['sphere_inner_rad']:
+            raise ValueError(
+                    'In the spheres dataset, `sphere_outer_rad` must be greater than `sphere_inner_rad`')
+        if not isinstance(config['sphere_dim'], int) or config['sphere_dim'] <= 2:
+            raise ValueError(
+                    'In the spheres dataset, `sphere_dim` must be an integer greater than 2')
+        if not isinstance(config['sphere_trainset_size'], int) or config['sphere_trainset_size'] <= 0:
+            raise ValueError(
+                    'In the spheres dataset, `sphere_trainset_size` must be an integer greater than 0`')
+        if not isinstance(config['sphere_testset_size'], int) or config['sphere_testset_size'] <= 0:
+            raise ValueError(
+                    'In the spheres dataset, `sphere_testset_size` must be an integer greater than 0`')
+        if config['sphere_testset_size'] % 2 != 0 or config['sphere_trainset_size'] % 2 != 0:
+            raise ValueError(
+                    'In the spheres dataset, sizes of the training and test sets must be even')
 
 def _get_run_config(args):
     keys = [
@@ -336,6 +358,9 @@ def _cleanup_args(args):
     elif 'MNIST' in args.dataset:
         args.input_shape = (1, 1, 28, 28)
         args.n_classes = 10
+    elif args.dataset == 'spheres':
+        args.input_shape = (1, args.sphere_dim)
+        args.n_classes = 2
 
     return args
 
@@ -353,6 +378,24 @@ def _set_default_values(args):
             for key, default_value in default_config.items():
                 if key not in d_args.keys() or d_args[key] is None:
                     setattr(args, key, default_value)
+   
+    if args.dataset == 'spheres':
+        # sphere dataset defaults
+        sphere_defaults = {
+                            'sphere_dim': 500,
+                            'sphere_inner_rad': 1.,
+                            'sphere_outer_rad': 1.3,
+                            'sphere_trainset_size': 50000,
+                            'sphere_testset_size': 50000
+                          }
+
+        d_args = vars(args)
+
+        for key, default_value in sphere_defaults.items():
+            if key not in d_args.keys() or d_args[key] is None:
+                print("setting sphere {}".format(key))
+                setattr(args, key, default_value)
+        # end sphere dataset defaults
 
     return args
 

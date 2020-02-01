@@ -13,6 +13,8 @@ from src import transforms
 
 import json
 
+from itertools import chain
+
 class Dataset:
     torchvision_datasets = ['CIFAR10', 'CIFAR100', 'MNIST', 'FashionMNIST', 'KMNIST']
     imagefolder_datasets = ['CINIC10']
@@ -136,6 +138,39 @@ class CINIC(Dataset):
         self.directory = './datasets/CINIC10'
         super(CINIC, self).__init__(config)
 
+class spheres():
+    def __init__(self, config):
+        self.dimension = config['sphere_dim']
+        self.inner_radius = config['sphere_inner_rad']
+        self.outer_radius = config['sphere_outer_rad']
+        self.trainset_size = config['sphere_trainset_size']
+        self.testset_size = config['sphere_testset_size']
+   
+        self.__generate_datasets__()
+
+    def __generate_datasets__(self):
+       
+        self.testset = self.generate_dataset(self.testset_size, self.dimension, self.inner_radius, self.outer_radius)
+        self.trainset = self.generate_dataset(self.trainset_size, self.dimension, self.inner_radius, self.outer_radius)
+
+    def generate_dataset(self, n_pts_total, dimension, inner_radius, outer_radius):
+        
+        inner_sphere = self.sample_sphere(n_pts_total/2, dimension, inner_radius)
+        outer_sphere = self.sample_sphere(n_pts_total/2, dimension, outer_radius)
+
+        return torch.Tensor(np.array(list(chain.from_iterable(zip(inner_sphere, outer_sphere)))))
+
+    def sample_sphere(self, n_pts, dimension, radius):
+        gaussians = np.random.randn(int(n_pts), int(dimension))
+        return [self.scale_norm(pt, radius) for pt in gaussians]
+
+    def get_datasets(self):
+        return self.trainset, self.testset 
+   
+    def scale_norm(self, pt, norm):
+        """ converts the norm of the point to the desired norm """
+        return pt/np.linalg.norm(pt)*norm
+
 class DownsampledDataset():
     # Dataset with a subset of images from the original labeled dataset,
     #   with an equal number of images per class
@@ -174,7 +209,7 @@ def get_loader(config):
 
     dataset_name = config['dataset']
     assert dataset_name in [
-        'CIFAR10', 'CIFAR100', 'MNIST', 'FashionMNIST', 'KMNIST', 'CINIC10'
+        'CIFAR10', 'CIFAR100', 'MNIST', 'FashionMNIST', 'KMNIST', 'CINIC10', 'spheres'
     ]
 
     if dataset_name in ['CIFAR10', 'CIFAR100']:
@@ -183,6 +218,8 @@ def get_loader(config):
         dataset = MNIST(config)
     elif dataset_name in ['CINIC10']:
         dataset = CINIC(config)
+    elif dataset_name in ['spheres']:
+        dataset = spheres(config)
 
     train_dataset, test_dataset = dataset.get_datasets()
 

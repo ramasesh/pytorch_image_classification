@@ -58,6 +58,8 @@ def parse_args():
     parser.add_argument('--base_channels', type=int)
     parser.add_argument('--block_type', type=str)
     parser.add_argument('--depth', type=int)
+    # model config (small_relu)
+    parser.add_argument('--n_hidden', type=int)
     # model config (ResNet-preact)
     parser.add_argument('--remove_first_relu', type=str2bool)
     parser.add_argument('--add_last_bn', type=str2bool)
@@ -133,8 +135,14 @@ def parse_args():
         '--dataset',
         type=str,
         default='CIFAR10',
-        choices=['CINIC10','CIFAR10', 'CIFAR100', 'MNIST', 'FashionMNIST', 'KMNIST'])
+        choices=['CINIC10','CIFAR10', 'CIFAR100', 'MNIST', 'FashionMNIST', 'KMNIST', 'spheres'])
     parser.add_argument('--num_workers', type=int, default=7)
+    # sphere dataset parameters
+    parser.add_argument('--sphere_dim', type=int)
+    parser.add_argument('--sphere_inner_rad', type=float)
+    parser.add_argument('--sphere_outer_rad', type=float)
+    parser.add_argument('--sphere_trainset_size', type=int)
+    parser.add_argument('--sphere_testset_size', type=int)
     # data subsampling
     parser.add_argument('--examples_per_class', type=int, default=None)
     parser.add_argument('--subsampling_seed', type=int, default=0)
