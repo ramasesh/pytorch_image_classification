@@ -177,6 +177,14 @@ def parse_args():
     parser.add_argument(
         '--use_label_smoothing', action='store_true', default=False)
     parser.add_argument('--label_smoothing_epsilon', type=float, default=0.1)
+    # data augmentation for spheres dataset
+    #   random scaling
+    parser.add_argument('--use_random_scale', type=str2bool)
+    parser.add_argument('--random_scale_prob', type=float)
+    parser.add_argument('--random_scale_var', type=float)
+    #   random reflection (coordinae-wise)
+    parser.add_argument('--use_random_reflection', type=str2bool)
+    parser.add_argument('--random_reflection_prob', type=float)
     # fp16
     parser.add_argument('--fp16', action='store_true')
     parser.add_argument('--use_amp', action='store_true')

@@ -15,6 +15,50 @@ import json
 
 from itertools import chain
 
+
+class PointDataset(torch.utils.data.Dataset):
+   
+    def __init__(self, points, labels, config=None):
+        assert isinstance(points, torch.Tensor)
+        assert len(points.size()) == 2
+        
+        self.data = points
+        self.config = config
+        self.labels = labels
+
+        self._transforms = []
+        self.transforms = self._get_transforms()
+
+    def __getitem__(self, idx):
+        point = self.data[idx]
+        for transform in self.transforms:
+            point = transform(point)
+
+        label = self.labels[idx]
+        return point, label
+
+    def __len__(self):
+        return self.data.size()[0]
+
+    def _get_transforms(self):
+        if self.config['use_random_scale']:
+            self._add_random_scale() 
+        if self.config['use_random_reflection']:
+            self._add_random_reflection()
+        return self._transforms
+
+    def _add_random_scale(self):
+        scale_prob = self.config['random_scale_prob']
+        scale_var = self.config['random_scale_var']
+        scaler = transforms.Scaler(scale_prob, scale_var) 
+        self._transforms.append(scaler)
+
+    def _add_random_reflection(self):
+        reflect_prob = self.config['random_reflection_prob']
+        reflector = transforms.Reflector(reflect_prob)
+        self._transforms.append(reflector)
+
+
 class Dataset:
     torchvision_datasets = ['CIFAR10', 'CIFAR100', 'MNIST', 'FashionMNIST', 'KMNIST']
     imagefolder_datasets = ['CINIC10']
@@ -145,20 +189,67 @@ class spheres():
         self.outer_radius = config['sphere_outer_rad']
         self.trainset_size = config['sphere_trainset_size']
         self.testset_size = config['sphere_testset_size']
-   
+  
+        self.train_augmentation_config, self.test_augmentation_config =  self._get_augmentation_configs(config)
+
         self.__generate_datasets__()
 
     def __generate_datasets__(self):
        
-        self.testset = self.generate_dataset(self.testset_size, self.dimension, self.inner_radius, self.outer_radius)
-        self.trainset = self.generate_dataset(self.trainset_size, self.dimension, self.inner_radius, self.outer_radius)
+        self.testset = self.generate_dataset(self.testset_size, 
+                                             self.dimension, 
+                                             self.inner_radius, 
+                                             self.outer_radius,
+                                             self.test_augmentation_config)
+        self.trainset = self.generate_dataset(self.trainset_size, 
+                                              self.dimension, 
+                                              self.inner_radius, 
+                                              self.outer_radius,
+                                              self.train_augmentation_config)
 
-    def generate_dataset(self, n_pts_total, dimension, inner_radius, outer_radius):
+    def _get_augmentation_configs(self, config):
+        """ NOTE: Does not set defaults here!
+        If you set defaults here, the problem is that you will not have a good record of the experiment,
+        because the experiment config can be missing these values.  So better to throw an error here if keys 
+        are not provided """
+
+        required_keys = {
+                        'use_random_scale': ['random_scale_prob', 'random_scale_var'], 
+                        'use_random_reflection': ['random_reflection_prob']
+                        }
+
+        train_augmentation_config = {}
+        test_augmentation_config = {}
+        for key, dependent_keys in required_keys.items():
+            if key not in config.keys():
+                raise Exception(f'{key} is required in spheres dataset')
+            else:
+                train_augmentation_config[key] = config[key]
+                if train_augmentation_config[key]:
+                    # make sure the dependent keys are there
+                    for dependent_key in dependent_keys:
+                        if dependent_key not in config.keys():
+                            raise Exception(
+                                            f'{dependent_key} is required' 
+                                            f' in spheres dataset when {key} is set to True'
+                                            )
+                        else:
+                            train_augmentation_config[dependent_key] = config[dependent_key]
+
+                test_augmentation_config[key] = False 
+
+        return train_augmentation_config, test_augmentation_config
+
+    def generate_dataset(self, n_pts_total, dimension, inner_radius, outer_radius, augmentation_config):
         
-        inner_sphere = self.sample_sphere(n_pts_total/2, dimension, inner_radius)
-        outer_sphere = self.sample_sphere(n_pts_total/2, dimension, outer_radius)
+        inner_sphere_data = self.sample_sphere(n_pts_total/2, dimension, inner_radius)
+        outer_sphere_data = self.sample_sphere(n_pts_total/2, dimension, outer_radius)
+        combined_data = torch.Tensor(np.array(list(chain.from_iterable(zip(inner_sphere_data, outer_sphere_data)))))
 
-        return torch.Tensor(np.array(list(chain.from_iterable(zip(inner_sphere, outer_sphere)))))
+        n_labels = int(n_pts_total/2)
+        labels = n_labels * [0,1]
+
+        return PointDataset(combined_data, labels, augmentation_config)
 
     def sample_sphere(self, n_pts, dimension, radius):
         gaussians = np.random.randn(int(n_pts), int(dimension))

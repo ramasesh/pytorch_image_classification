@@ -161,7 +161,12 @@ def _get_data_config(args):
         'sphere_inner_rad',
         'sphere_outer_rad',
         'sphere_trainset_size',
-        'sphere_testset_size'
+        'sphere_testset_size',
+        'use_random_scale',
+        'random_scale_prob',
+        'random_scale_var',
+        'use_random_reflection',
+        'random_reflection_prob'
         ]
     json_keys = ['random_erasing_area_ratio_range']
     config = _args2config(args, keys, json_keys)
@@ -386,7 +391,12 @@ def _set_default_values(args):
                             'sphere_inner_rad': 1.,
                             'sphere_outer_rad': 1.3,
                             'sphere_trainset_size': 50000,
-                            'sphere_testset_size': 50000
+                            'sphere_testset_size': 50000,
+                            'use_random_scale': False,
+                            'use_random_reflection': False,
+                            'random_scale_prob': 0.25,
+                            'random_scale_var': 0.1,
+                            'random_reflection_prob': 0.01
                           }
 
         d_args = vars(args)
