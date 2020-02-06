@@ -17,11 +17,11 @@ from itertools import chain
 
 
 class PointDataset(torch.utils.data.Dataset):
-   
+
     def __init__(self, points, labels, config=None):
         assert isinstance(points, torch.Tensor)
         assert len(points.size()) == 2
-        
+
         self.data = points
         self.config = config
         self.labels = labels
@@ -214,7 +214,7 @@ class spheres():
         are not provided """
 
         required_keys = {
-                        'use_random_scale': ['random_scale_prob', 'random_scale_var'], 
+                        'use_random_scale': ['random_scale_prob', 'random_scale_var'],
                         'use_random_reflection': ['random_reflection_prob']
                         }
 
@@ -230,18 +230,18 @@ class spheres():
                     for dependent_key in dependent_keys:
                         if dependent_key not in config.keys():
                             raise Exception(
-                                            f'{dependent_key} is required' 
+                                            f'{dependent_key} is required'
                                             f' in spheres dataset when {key} is set to True'
                                             )
                         else:
                             train_augmentation_config[dependent_key] = config[dependent_key]
 
-                test_augmentation_config[key] = False 
+                test_augmentation_config[key] = False
 
         return train_augmentation_config, test_augmentation_config
 
     def generate_dataset(self, n_pts_total, dimension, inner_radius, outer_radius, augmentation_config):
-        
+
         inner_sphere_data = self.sample_sphere(n_pts_total/2, dimension, inner_radius)
         outer_sphere_data = self.sample_sphere(n_pts_total/2, dimension, outer_radius)
         combined_data = torch.Tensor(np.array(list(chain.from_iterable(zip(inner_sphere_data, outer_sphere_data)))))
@@ -311,7 +311,7 @@ def get_loader(config):
         dataset = CINIC(config)
     elif dataset_name in ['spheres']:
         dataset = spheres(config)
-
+        test_batch_size=500
     train_dataset, test_dataset = dataset.get_datasets()
 
     # handle subsampling
@@ -339,12 +339,23 @@ def get_loader(config):
         drop_last=True,
         worker_init_fn=worker_init_fn,
     )
-    test_loader = torch.utils.data.DataLoader(
-        test_dataset,
-        batch_size=batch_size,
-        num_workers=num_workers,
-        shuffle=False,
-        pin_memory=use_gpu,
-        drop_last=False,
-    )
+    if dataset_name not in ['spheres']:
+      test_loader = torch.utils.data.DataLoader(
+          test_dataset,
+          batch_size=batch_size,
+          num_workers=num_workers,
+          shuffle=False,
+          pin_memory=use_gpu,
+          drop_last=False,
+      )
+    else:
+      test_loader = torch.utils.data.DataLoader(
+          test_dataset,
+          batch_size=test_batch_size,
+          num_workers=num_workers,
+          shuffle=False,
+          pin_memory=use_gpu,
+          drop_last=False,
+      )
+
     return train_loader, test_loader

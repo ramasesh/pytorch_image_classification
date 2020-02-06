@@ -37,7 +37,8 @@ def _get_model_config(args):
         'block_type',
         'depth',
         # small_relu
-        'n_hidden',
+        'n_hidden_units',
+        'n_hidden_layers',
         # resnet_preact, se_resnet_preact
         'remove_first_relu',
         'add_last_bn',

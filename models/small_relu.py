@@ -8,7 +8,7 @@ class Network(nn.Module):
         super().__init__()
         
         self.input_shape = config['input_shape'] 
-        self.n_hidden = config['n_hidden']
+        self.n_hidden = config['n_hidden_units']
         self.n_classes = config['n_classes'] 
 
         self.L1 = nn.Linear(in_features = self.input_shape[1],
