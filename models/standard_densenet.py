@@ -98,8 +98,8 @@ def DenseNet161():
 def densenet_cifar():
     return DenseNet(Bottleneck, [6,12,24,16], growth_rate=12)
 
-def Network(*args):
-    return densenet_cifar()
+def Network(config):
+    return DenseNet(Bottleneck, [6,12,24,16], growth_rate=12, num_classes = config['n_classes'])
 
 def test():
     net = densenet_cifar()

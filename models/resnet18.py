@@ -100,8 +100,8 @@ class ResNet(nn.Module):
 def ResNet18():
     return ResNet(BasicBlock, [2,2,2,2])
 
-def Network(*args):
-    return ResNet18()
+def Network(config):
+    return ResNet(BasicBlock, [2,2,2,2], config['n_classes'])
 
 def ResNet34():
     return ResNet(BasicBlock, [3,4,6,3])
