@@ -61,7 +61,7 @@ class PointDataset(torch.utils.data.Dataset):
 
 class Dataset:
     torchvision_datasets = ['CIFAR10', 'CIFAR100', 'MNIST', 'FashionMNIST', 'KMNIST']
-    imagefolder_datasets = ['CINIC10']
+    imagefolder_datasets = ['CINIC10', 'CINIC10Enlarged']
     def __init__(self, config):
         self.config = config
         dataset_rootdir = pathlib.Path('~/.torchvision/datasets').expanduser()
@@ -182,6 +182,15 @@ class CINIC(Dataset):
         self.directory = './datasets/CINIC10'
         super(CINIC, self).__init__(config)
 
+class CINICEnlarged(Dataset):
+    def __init__(self, config):
+        self.size = 32
+        self.mean = np.array([0.47889522, 0.47227842, 0.43047404])
+        self.std = np.array([0.24205776, 0.23828046, 0.25874835])
+        self.directory = './datasets/CINIC10Enlarged'
+        super(CINICEnlarged, self).__init__(config)
+
+
 class spheres():
     def __init__(self, config):
         self.dimension = config['sphere_dim']
@@ -300,7 +309,7 @@ def get_loader(config):
 
     dataset_name = config['dataset']
     assert dataset_name in [
-        'CIFAR10', 'CIFAR100', 'MNIST', 'FashionMNIST', 'KMNIST', 'CINIC10', 'spheres'
+        'CIFAR10', 'CIFAR100', 'MNIST', 'FashionMNIST', 'KMNIST', 'CINIC10', 'CINIC10Enlarged', 'spheres'
     ]
 
     if dataset_name in ['CIFAR10', 'CIFAR100']:
@@ -309,6 +318,8 @@ def get_loader(config):
         dataset = MNIST(config)
     elif dataset_name in ['CINIC10']:
         dataset = CINIC(config)
+    elif dataset_name in ['CINIC10Enlarged']:
+        dataset = CINICEnlarged(config)
     elif dataset_name in ['spheres']:
         dataset = spheres(config)
         test_batch_size=500

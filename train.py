@@ -136,7 +136,7 @@ def parse_args():
         '--dataset',
         type=str,
         default='CIFAR10',
-        choices=['CINIC10','CIFAR10', 'CIFAR100', 'MNIST', 'FashionMNIST', 'KMNIST', 'spheres'])
+        choices=['CINIC10','CINIC10Enlarged','CIFAR10', 'CIFAR100', 'MNIST', 'FashionMNIST', 'KMNIST', 'spheres'])
     parser.add_argument('--num_workers', type=int, default=7)
     # sphere dataset parameters
     parser.add_argument('--sphere_dim', type=int)

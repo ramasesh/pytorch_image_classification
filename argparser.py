@@ -355,7 +355,7 @@ def _cleanup_args(args):
         args.tensorboard_model_params = False
 
     # data
-    if args.dataset in ['CIFAR10', 'CINIC10']:
+    if args.dataset in ['CIFAR10', 'CINIC10', 'CINIC10Enlarged']:
         args.input_shape = (1, 3, 32, 32)
         args.n_classes = 10
     elif args.dataset == 'CIFAR100':
