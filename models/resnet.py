@@ -128,17 +128,18 @@ class Network(nn.Module):
         assert block_type in ['basic', 'bottleneck']
         if block_type == 'basic':
             block = BasicBlock
-            n_blocks_per_stage = (depth - 2) // 6
-            assert n_blocks_per_stage * 6 + 2 == depth
+            n_blocks_per_stage = (depth - 2) // 8
+            assert n_blocks_per_stage * 8 + 2 == depth
         else:
             block = BottleneckBlock
-            n_blocks_per_stage = (depth - 2) // 9
-            assert n_blocks_per_stage * 9 + 2 == depth
+            n_blocks_per_stage = (depth - 2) // 12
+            assert n_blocks_per_stage * 12 + 2 == depth
 
         n_channels = [
             base_channels,
             base_channels * 2 * block.expansion,
             base_channels * 4 * block.expansion
+            base_channels * 8 * block.expansion
         ]
 
         self.conv = nn.Conv2d(
@@ -156,6 +157,8 @@ class Network(nn.Module):
             n_channels[0], n_channels[1], n_blocks_per_stage, block, stride=2)
         self.stage3 = self._make_stage(
             n_channels[1], n_channels[2], n_blocks_per_stage, block, stride=2)
+        self.stage4 = self._make_stage(
+            n_channels[2], n_channels[3], n_blocks_per_stage, block, stride=2)
 
         # compute conv feature size
         with torch.no_grad():
@@ -188,6 +191,7 @@ class Network(nn.Module):
         x = self.stage1(x)
         x = self.stage2(x)
         x = self.stage3(x)
+        x = self.stage4(x)
         x = F.adaptive_avg_pool2d(x, output_size=1)
         return x
 
