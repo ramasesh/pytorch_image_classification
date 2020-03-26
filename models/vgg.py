@@ -68,7 +68,7 @@ class Network(nn.Module):
             if self.use_bn:
                 stage.add_module('bn{}'.format(index),
                                  nn.BatchNorm2d(out_channels))
-            stage.add_module('relu', nn.ReLU(inplace=True))
+                stage.add_module('relu{}'.format(index), nn.ReLU(inplace=True))
         stage.add_module('pool', nn.MaxPool2d(kernel_size=2, stride=2))
         return stage
 

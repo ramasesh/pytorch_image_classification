@@ -48,6 +48,7 @@ def _get_model_config(args):
         # densenet
         'growth_rate',
         'compression_rate',
+        'block_size',
         # wrn, densenet
         'drop_rate',
         # pyramidnet 'pyramid_alpha',
@@ -60,7 +61,7 @@ def _get_model_config(args):
         # se_resnet_preact
         'se_reduction',
     ]
-    json_keys = ['preact_stage']
+    json_keys = ['n_channels','n_layers','preact_stage']
     config = _args2config(args, keys, json_keys)
     return config
 
@@ -270,7 +271,7 @@ def _cleanup_args(args):
         args.preact_stage = None
     if args.arch != 'wrn':
         args.widening_factor = None
-    if args.arch != 'densenet':
+    if args.arch not in ['densenet', 'standard_densenet_configurable']:
         args.growth_rate = None
         args.compression_rate = None
     if args.arch not in ['wrn', 'densenet']:

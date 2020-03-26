@@ -138,7 +138,7 @@ class Network(nn.Module):
         n_channels = [
             base_channels,
             base_channels * 2 * block.expansion,
-            base_channels * 4 * block.expansion
+            base_channels * 4 * block.expansion,
             base_channels * 8 * block.expansion
         ]
 

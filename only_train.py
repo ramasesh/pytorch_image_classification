@@ -622,21 +622,10 @@ def main():
         train_log = train(epoch, model, optimizer, scheduler, train_criterion,
                           train_loader, config, writer, amp_handle)
 
-        # test
-        test_log = test(epoch, model, test_criterion, test_loader, run_config,
-                        writer)
-
         epoch_log = train_log.copy()
-        epoch_log.update(test_log)
         epoch_logs.append(epoch_log)
         utils.save_epoch_logs(epoch_logs, outdir)
 
-        # update state dictionary
-        state = update_state(state, epoch, epoch_log['test']['accuracy'],
-                             model, optimizer)
-
-        # save model
-        utils.save_checkpoint(state, outdir)
 
 
     """
